@@ -22,11 +22,23 @@ module "eks" {
   kubernetes_version = "1.35"
 
   # Optional
+  endpoint_private_access      = true
   endpoint_public_access       = true
   endpoint_public_access_cidrs = ["${chomp(data.http.my_public_ip.response_body)}/32"]
 
   # Optional: Adds the current caller identity as an administrator via cluster access entry
   enable_cluster_creator_admin_permissions = true
+
+  addons = {
+    coredns = {}
+    eks-pod-identity-agent = {
+      before_compute = true
+    }
+    kube-proxy = {}
+    vpc-cni = {
+      before_compute = true
+    }
+  }
 
   compute_config = {
     enabled = false
@@ -44,6 +56,12 @@ module "eks" {
       max_size       = 5
 
       subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
+
+      timeouts = {
+        create = "10m"
+        update = "10m"
+        delete = "15m"
+      }
     }
   }
 
