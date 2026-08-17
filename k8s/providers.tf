@@ -1,10 +1,29 @@
 provider "helm" {
   kubernetes = {
-    config_path = var.k8s_path
+    # config_path            = var.k8s_path
+    host                   = data.terraform_remote_state.eks.outputs.cluster_endpoint
+    cluster_ca_certificate = base64decode(data.terraform_remote_state.eks.outputs.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.this.token
   }
 }
 
 provider "kubernetes" {
-  config_path = var.k8s_path
-  #  config_context = 
+  #   config_path            = var.k8s_path
+  host                   = data.terraform_remote_state.eks.outputs.cluster_endpoint
+  cluster_ca_certificate = base64decode(data.terraform_remote_state.eks.outputs.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+#  data блок. eks state
+data "terraform_remote_state" "eks" {
+  backend = "s3"
+  config = {
+    bucket = "teno-wa-01"
+    key    = "eks/terraform.tfstate" # шлях до eks стейту
+    region = "eu-central-1"
+  }
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = data.terraform_remote_state.eks.outputs.cluster_name
 }
