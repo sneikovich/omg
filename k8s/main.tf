@@ -40,4 +40,14 @@ resource "helm_release" "cert_manager" {
   repository       = "oci://quay.io/jetstack/charts/"
   create_namespace = false
   namespace        = kubernetes_namespace_v1.cert_manager.metadata[0].name
+
+  set = { "crds.enabled" = "true" }
+
+    values = [
+        yamlencode(
+            config = {
+                enableGatewayAPI = true
+            }
+        )
+    ]
 }
