@@ -23,32 +23,9 @@ resource "helm_release" "cert_manager" {
 }
 
 resource "kubectl_manifest" "letsencrypt_staging" {
-  yaml_body = yamlencode({
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = "letsencrypt-staging"
-    }
-    spec = {
-      acme = {
-        server = var.acme_server
-        email  = var.acme_email
-        privateKeySecretRef = {
-          name = "letsencrypt-staging-account-key"
-        }
-        solvers = [{
-          http01 = {
-            gatewayHTTPRoute = {
-              parentRefs = [{
-                name      = "main-gateway"
-                namespace = kubernetes_namespace_v1.envoy_gw.metadata[0].name
-                kind      = "Gateway"
-              }]
-            }
-          }
-        }]
-      }
-    }
+  yaml_body = templatefile("${path.module}/manifests/cert-manager/cluster-issuer.yml", {
+    acme_server = var.acme_server
+    acme_email  = var.acme_email
   })
 
   depends_on = [helm_release.cert_manager, kubectl_manifest.gateway]

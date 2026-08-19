@@ -42,54 +42,17 @@ resource "aws_s3_bucket_policy" "site" {
 }
 
 resource "kubectl_manifest" "site_backend" {
-  yaml_body = yamlencode({
-    apiVersion = "gateway.envoyproxy.io/v1alpha1"
-    kind       = "Backend"
-    metadata = {
-      name      = "static-site"
-      namespace = kubernetes_namespace_v1.envoy_gw.metadata[0].name
-    }
-    spec = {
-      endpoints = [{
-        fqdn = {
-          hostname = "${aws_s3_bucket.site.id}.s3-website.eu-central-1.amazonaws.com"
-          port     = 80
-        }
-      }]
-    }
+  yaml_body = templatefile("${path.module}/manifests/s3-site/backend.yml", {
+    bucket_website_hostname = "${aws_s3_bucket.site.id}.s3-website.eu-central-1.amazonaws.com"
   })
 
   depends_on = [helm_release.envoy_gw, aws_s3_bucket_website_configuration.site]
 }
 
 resource "kubectl_manifest" "site_route" {
-  yaml_body = yamlencode({
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata = {
-      name      = "static-site"
-      namespace = kubernetes_namespace_v1.envoy_gw.metadata[0].name
-    }
-    spec = {
-      parentRefs = [{
-        name = "main-gateway"
-      }]
-      hostnames = [var.domain_name]
-      rules = [{
-        filters = [{
-          type = "URLRewrite"
-          urlRewrite = {
-            hostname = "${aws_s3_bucket.site.id}.s3-website.eu-central-1.amazonaws.com"
-          }
-        }]
-        backendRefs = [{
-          group = "gateway.envoyproxy.io"
-          kind  = "Backend"
-          name  = "static-site"
-          port  = 80
-        }]
-      }]
-    }
+  yaml_body = templatefile("${path.module}/manifests/s3-site/http-route.yml", {
+    domain_name             = var.domain_name
+    bucket_website_hostname = "${aws_s3_bucket.site.id}.s3-website.eu-central-1.amazonaws.com"
   })
 
   depends_on = [kubectl_manifest.site_backend, kubectl_manifest.gateway]
