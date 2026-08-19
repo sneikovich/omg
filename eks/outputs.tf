@@ -10,3 +10,11 @@ output "cluster_certificate_authority_data" {
   value     = module.eks.cluster_certificate_authority_data
   sensitive = true
 }
+
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "route53_zone_id" {
+  value = data.aws_route53_zone.this.zone_id
+}
