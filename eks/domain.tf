@@ -1,6 +1,6 @@
 variable "domain_name" {
   type    = string
-  default = "bubbub.com"
+  default = "zmeypavel.com"
 }
 
 # хостована зона вже існує, тут лише lookup
