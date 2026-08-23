@@ -22,7 +22,7 @@ resource "helm_release" "external_dns" {
   set = {
     "provider"              = "cloudflare"
     "sources[0]"            = "gateway-httproute"
-    "txtOwnerId"            = "teno-wa-01"
+    "txtOwnerId"            = "bubba"
     "domainFilters[0]"      = var.domain_name
     "serviceAccount.name"   = "external-dns"
     "serviceAccount.create" = "true"
