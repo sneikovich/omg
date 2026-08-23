@@ -1,4 +1,4 @@
-// бакет для статики. поки без вмісту - ресурс зі статикою додамо пізніше
+// бакет для статики
 resource "aws_s3_bucket" "site" {
   bucket = var.domain_name
 }
@@ -22,6 +22,22 @@ resource "aws_s3_bucket_public_access_block" "site" {
   block_public_policy     = false
   ignore_public_acls      = false
   restrict_public_buckets = false
+}
+
+resource "aws_s3_object" "index" {
+  bucket       = aws_s3_bucket.site.id
+  key          = "index.html"
+  source       = "${path.module}/site/index.html"
+  etag         = filemd5("${path.module}/site/index.html")
+  content_type = "text/html"
+}
+
+resource "aws_s3_object" "error" {
+  bucket       = aws_s3_bucket.site.id
+  key          = "error.html"
+  source       = "${path.module}/site/error.html"
+  etag         = filemd5("${path.module}/site/error.html")
+  content_type = "text/html"
 }
 
 # website endpoint S3 не підтримує IAM/OAC, тож для роздачі статики потрібен public-read
