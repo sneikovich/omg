@@ -13,10 +13,17 @@ resource "helm_release" "envoy_gw" {
   }
 }
 
+// NLB замість дефолтного Classic ELB - дешевше і продуктивніше для L4-passthrough, яким тут займається envoy
+resource "kubectl_manifest" "envoy_proxy" {
+  yaml_body = file("${path.module}/manifests/envoy/envoy-proxy.yml")
+
+  depends_on = [helm_release.envoy_gw]
+}
+
 resource "kubectl_manifest" "gateway_class" {
   yaml_body = file("${path.module}/manifests/envoy/gateway-class.yml")
 
-  depends_on = [helm_release.envoy_gw]
+  depends_on = [helm_release.envoy_gw, kubectl_manifest.envoy_proxy]
 }
 
 resource "kubectl_manifest" "gateway" {
