@@ -16,3 +16,8 @@ variable "acme_server" {
   type    = string
   default = "https://acme-staging-v02.api.letsencrypt.org/directory"
 }
+
+variable "cloudflare_api_token" {
+  type      = string
+  sensitive = true
+}
