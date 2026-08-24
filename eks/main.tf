@@ -2,7 +2,7 @@ data "terraform_remote_state" "vpc" {
   backend = "s3"
 
   config = {
-    bucket = "bubba"
+    bucket = "bubba-project"
     key    = "state/vpc/terraform.tfstate"
     region = "eu-central-1"
   }
