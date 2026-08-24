@@ -39,7 +39,7 @@ data "terraform_remote_state" "eks" {
   backend = "s3"
   config = {
     bucket = "bubba-project"
-    key    = "eks/terraform.tfstate" # шлях до eks стейту
+    key    = "state/eks/terraform.tfstate" # шлях до eks стейту
     region = "eu-central-1"
   }
 }
