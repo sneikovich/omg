@@ -5,7 +5,12 @@ resource "helm_release" "cert_manager" {
   create_namespace = false
   namespace        = kubernetes_namespace_v1.cert_manager.metadata[0].name
 
-  set = { "crds.enabled" = "true" }
+  set = [
+    {
+      name  = "crds.enabled"
+      value = "true"
+    }
+  ]
 
   values = [
     yamlencode({

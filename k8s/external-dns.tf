@@ -19,14 +19,14 @@ resource "helm_release" "external_dns" {
   create_namespace = false
   namespace        = kubernetes_namespace_v1.external_dns.metadata[0].name
 
-  set = {
-    "provider"              = "cloudflare"
-    "sources[0]"            = "gateway-httproute"
-    "txtOwnerId"            = "bubba-project"
-    "domainFilters[0]"      = var.domain_name
-    "serviceAccount.name"   = "external-dns"
-    "serviceAccount.create" = "true"
-  }
+  set = [
+    { name = "provider", value = "cloudflare" },
+    { name = "sources[0]", value = "gateway-httproute" },
+    { name = "txtOwnerId", value = "bubba-project" },
+    { name = "domainFilters[0]", value = var.domain_name },
+    { name = "serviceAccount.name", value = "external-dns" },
+    { name = "serviceAccount.create", value = "true" },
+  ]
 
   values = [
     yamlencode({

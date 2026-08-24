@@ -8,9 +8,12 @@ resource "helm_release" "envoy_gw" {
   create_namespace = false
   namespace        = kubernetes_namespace_v1.envoy_gw.metadata[0].name
 
-  set = {
-    "config.envoyGateway.extensionApis.enableBackend" = "true"
-  }
+  set = [
+    {
+      name  = "config.envoyGateway.extensionApis.enableBackend"
+      value = "true"
+    }
+  ]
 }
 
 // NLB замість дефолтного Classic ELB - дешевше і продуктивніше для L4-passthrough, яким тут займається envoy
