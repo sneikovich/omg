@@ -32,6 +32,14 @@ resource "aws_s3_object" "index" {
   content_type = "text/html"
 }
 
+resource "aws_s3_object" "kube01_index" {
+  bucket       = aws_s3_bucket.site.id
+  key          = "kube01/index.html"
+  source       = "${path.module}/site/kube01/index.html"
+  etag         = filemd5("${path.module}/site/kube01/index.html")
+  content_type = "text/html"
+}
+
 resource "aws_s3_object" "error" {
   bucket       = aws_s3_bucket.site.id
   key          = "error.html"
