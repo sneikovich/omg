@@ -15,3 +15,9 @@ resource "kubernetes_namespace_v1" "cert_manager" {
     name = "cert-manager"
   }
 }
+
+resource "kubernetes_namespace_v1" "osm_app" {
+  metadata {
+    name = "osm-app"
+  }
+}
