@@ -1,0 +1,81 @@
+services:
+  fetcher:
+    build: ./overpass-api-fetcher
+    environment:
+      OVERPASS_ENDPOINT: ${OVERPASS_ENDPOINT:-https://overpass-api.de/api/interpreter}
+      OVERPASS_RETRIES: "3"
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app}@rabbitmq:5672/%2f
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # no published ports: only reachable through the frontend proxy
+
+  frontend:
+    build: ./frontend
+    environment:
+      FETCHER_URL: http://fetcher:8080
+    ports:
+      - "8080:80"
+    depends_on:
+      - fetcher
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+
+  history:
+    build: ./history
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-history}:${POSTGRES_PASSWORD:-history}@postgres/${POSTGRES_DB:-history}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app}@rabbitmq:5672/%2f
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-history}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-history}
+      POSTGRES_DB: ${POSTGRES_DB:-history}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-history}"]
+      interval: 10s
+      timeout: 3s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "15672:15672" # management UI; AMQP (5672) stays internal
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-app}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-app}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # Pure cache: no persistence, bounded memory, least-recently-used eviction.
+  redis:
+    image: docker.io/library/redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+  rabbitmq-data:
