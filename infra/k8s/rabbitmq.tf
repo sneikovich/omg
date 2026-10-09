@@ -62,8 +62,12 @@ resource "kubernetes_deployment_v1" "rabbitmq" {
             exec {
               command = ["rabbitmq-diagnostics", "-q", "ping"]
             }
+            # дефолтний timeout_seconds=1 занадто малий - rabbitmq-diagnostics
+            # підіймає окремий erlang CLI-процес і на завантаженій ноді не
+            # встигає за секунду, kubelet рахує це провалом і вбиває контейнер
             initial_delay_seconds = 20
             period_seconds        = 15
+            timeout_seconds       = 10
           }
 
           readiness_probe {
@@ -72,6 +76,7 @@ resource "kubernetes_deployment_v1" "rabbitmq" {
             }
             initial_delay_seconds = 10
             period_seconds        = 10
+            timeout_seconds       = 10
           }
 
           resources {
