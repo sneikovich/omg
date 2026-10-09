@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: osm-app
+  namespace: osm-app
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: envoy-gw
+  hostnames:
+    - ${domain_name}
+  rules:
+    # правило для /api (fetcher Service) додається окремо пізніше,
+    # коли сервіс фетчера вже існує
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: ${bucket_website_hostname}
+      backendRefs:
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: frontend-site
+          port: 80
