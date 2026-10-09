@@ -19,6 +19,9 @@ resource "helm_release" "external_dns" {
   create_namespace = false
   namespace        = kubernetes_namespace_v1.external_dns.metadata[0].name
 
+  # дефолтні 300s не вистачало - под не встигав стати Ready на завантаженому кластері
+  timeout = 600
+
   set = [
     { name = "provider", value = "cloudflare" },
     { name = "sources[0]", value = "gateway-httproute" },
