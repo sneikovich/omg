@@ -5,6 +5,11 @@ resource "kubernetes_deployment_v1" "fetcher" {
     labels    = { app = "fetcher" }
   }
 
+  # apply не чекає на готовність подів (образу в ECR ще може не бути -
+  # інакше apply висить до таймауту і AWS-токен встигає протухнути); готовність
+  # перевіряємо окремо через kubectl після push-images.sh
+  wait_for_rollout = false
+
   spec {
     # stateless, горизонтально масштабоване - 2 репліки для старту
     replicas = 2

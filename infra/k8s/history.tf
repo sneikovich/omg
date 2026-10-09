@@ -5,6 +5,9 @@ resource "kubernetes_deployment_v1" "history" {
     labels    = { app = "history" }
   }
 
+  # та ж причина, що в fetcher.tf - не блокувати apply очікуванням готовності подів
+  wait_for_rollout = false
+
   spec {
     # stateless (sqlx-міграції йдуть під advisory lock, безпечно для конкурентних реплік)
     replicas = 2

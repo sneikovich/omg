@@ -6,6 +6,9 @@ resource "kubernetes_deployment_v1" "redis" {
     labels    = { app = "redis" }
   }
 
+  # не блокувати apply очікуванням готовності поду (та ж причина, що в fetcher.tf)
+  wait_for_rollout = false
+
   spec {
     replicas = 1
 
