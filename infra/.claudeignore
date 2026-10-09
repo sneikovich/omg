@@ -1,0 +1,19 @@
+# terraform cache/plugins — важкі, не потрібні для розуміння коду
+.terraform/
+
+# state може містити секрети (токени, паролі тощо) — небезпечно давати в контекст
+*.tfstate
+*.tfstate.*
+
+# tfvars — локальні секрети/оверайди, у git теж ігноруються
+*.tfvars
+*.tfvars.json
+
+# lock-файл — сотні рядків самих хешів, шуму більше ніж користі
+.terraform.lock.hcl
+
+# crash logs / cli config — сміття, не код
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc

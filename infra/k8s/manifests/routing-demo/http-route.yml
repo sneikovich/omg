@@ -1,0 +1,37 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kube-routing-demo
+  namespace: envoy-gw
+spec:
+  parentRefs:
+    - name: main-gateway
+  hostnames:
+    - ${domain_name}
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /kube01/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: ${bucket_website_hostname}
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /kube01/index.html
+      backendRefs:
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: static-site
+          port: 80
+    - matches:
+        - path:
+            type: RegularExpression
+            value: "^/kube[0-9]{2}/$"
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: kube-unknown-response
