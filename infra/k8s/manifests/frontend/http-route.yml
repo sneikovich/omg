@@ -10,8 +10,17 @@ spec:
   hostnames:
     - ${domain_name}
   rules:
-    # правило для /api (fetcher Service) додається окремо пізніше,
-    # коли сервіс фетчера вже існує
+    # /api напряму на k8s Service фетчера (native backendRef, без Backend CRD -
+    # він потрібен лише для цілей поза кластером, як S3 нижче). Специфічність
+    # матчу важливіша за порядок правил у списку - Envoy Gateway сам сортує
+    # /api вище за /, але лишаємо явний порядок для читабельності.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: fetcher
+          port: 8080
     - matches:
         - path:
             type: PathPrefix
