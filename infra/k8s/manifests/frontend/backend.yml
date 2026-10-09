@@ -1,0 +1,10 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: frontend-site
+  namespace: osm-app
+spec:
+  endpoints:
+    - fqdn:
+        hostname: ${bucket_website_hostname}
+        port: 80
