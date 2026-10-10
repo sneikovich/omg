@@ -21,6 +21,10 @@ spec:
       backendRefs:
         - name: fetcher
           port: 8080
+      # дефолтний route-timeout Envoy Gateway - 15s, замало для Overpass API
+      # (старий nginx тримав proxy_read_timeout 300s саме з цієї причини)
+      timeouts:
+        request: 300s
     - matches:
         - path:
             type: PathPrefix
