@@ -32,6 +32,9 @@ resource "helm_release" "external_dns" {
     # нова версія чарта вимагає policy явно (values.schema.json); upsert-only -
     # власний дефолт external-dns, ніколи не видаляє записи, яких сам не створював
     { name = "policy", value = "upsert-only" },
+    # без цього чарт за дефолтом ставить proxied=false - запис веде напряму на
+    # IP NLB, а прямий доступ до нього ззовні блокується (тільки Cloudflare-проксі working)
+    { name = "cloudflare.proxied", value = "true" },
   ]
 
   values = [
