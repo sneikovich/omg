@@ -10,7 +10,9 @@ data "terraform_remote_state" "vpc" {
 
 
 data "http" "my_public_ip" {
-  url = "https://ifconfig.me/ip"
+  # ipify не має AAAA-запису - завжди повертає IPv4, незалежно від того, чи
+  # клієнт dual-stack/IPv6-only (ifconfig.me віддавав IPv6, що ламало /32 нижче)
+  url = "https://api.ipify.org"
 }
 
 
