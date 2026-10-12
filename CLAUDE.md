@@ -8,7 +8,6 @@ Guidance for Claude Code (and other agents) working in this repository.
 AWS EKS. The repo has two halves:
 
 - **`infra/`** — Terraform IaC for the AWS/Kubernetes platform the app runs on. See
-  **`infra/CLAUDE.md`** for Terraform-specific conventions, commands, and the
   **non-negotiable rule that `terraform apply`/`destroy` are human-only** — never run them
   yourself from an agent session.
 - **`osm-app/`** — the application source. Three services (`frontend`, `fetcher`,

@@ -19,3 +19,6 @@ deploy/dist/
 *.swp
 *~
 .DS_Store
+
+# AI specific
+.claude/
