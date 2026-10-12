@@ -16,6 +16,10 @@ resource "aws_s3_bucket" "monitoring" {
   for_each = local.monitoring_components
 
   bucket = local.monitoring_buckets[each.key]
+
+  # без цього terraform destroy падає на непорожньому бакеті; а за shard rule k8s-шар
+  # знищується регулярно. Дані моніторингу відтворювані (ретенція 7d), тож це прийнятно
+  force_destroy = true
 }
 
 # на відміну від frontend-бакета, дані моніторингу публічними не бувають
