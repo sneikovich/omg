@@ -32,3 +32,6 @@ echo "Pushed ($ENGINE):"
 echo "  $FETCHER_REPO:latest"
 echo "  $HISTORY_REPO:latest"
 echo "(:latest + MUTABLE tag - після повторного push треба kubectl rollout restart)"
+
+# kubectl rollout restart deployment/fetcher -n osm-app
+# kubectl rollout restart deployment/history -n osm-app
