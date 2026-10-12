@@ -18,6 +18,13 @@ resource "kubernetes_deployment_v1" "rabbitmq" {
     template {
       metadata {
         labels = { app = "rabbitmq" }
+        # otel-gateway (prometheus receiver, job osm-app-pods) скрейпить поди з цими анотаціями;
+        # плагін rabbitmq_prometheus входить в образ rabbitmq:4-management - ПЕРЕВІРИТИ після деплою (curl :15692/metrics)
+        annotations = {
+          "prometheus.io/scrape" = "true"
+          "prometheus.io/port"   = "15692"
+          "prometheus.io/path"   = "/metrics"
+        }
       }
 
       spec {
@@ -31,6 +38,11 @@ resource "kubernetes_deployment_v1" "rabbitmq" {
 
           port {
             container_port = 15672
+          }
+
+          # rabbitmq_prometheus: метрики черг (history.events, history.events.dead), publish/ack rate
+          port {
+            container_port = 15692
           }
 
           env {
