@@ -7,8 +7,8 @@ Guidance for Claude Code (and other agents) working in this repository.
 `osm-app` — a small "what's nearby" map search tool over OpenStreetMap data — deployed on
 AWS EKS. The repo has two halves:
 
-- **`infra/`** — Terraform IaC for the AWS/Kubernetes platform the app runs on. See
-  **non-negotiable rule that `terraform apply`/`destroy` are human-only** — never run them
+- **`infra/`** — Terraform IaC for the AWS/Kubernetes platform the app runs on.
+  **Non-negotiable rule: `terraform apply`/`destroy` are human-only** — never run them
   yourself from an agent session.
 - **`osm-app/`** — the application source. Three services (`frontend`, `fetcher`,
   `history`) plus `postgres`/`rabbitmq`/`redis`. Runnable standalone via
@@ -96,6 +96,41 @@ and `eks` are touched rarely and should stay that way unless there's a specific 
 
 Both are valid; don't assume one when debugging something reported about the other.
 
+## Monitoring (k8s only)
+
+Namespace `monitoring`, all in `infra/k8s/` (`loki.tf`, `mimir.tf`, `otel-collector.tf`,
+`grafana.tf`, `monitoring-storage.tf`; config templates in `monitoring/*.tftpl`):
+
+```
+pod stdout ─► otel-agent (DaemonSet: filelog + kubeletstats) ─► Loki  (OTLP)        ─┐
+envoy / rabbitmq / redis / postgres / k8s state                                      ├─► S3
+   └► otel-gateway (Deployment x1) ─────────────────────────► Mimir (remote write) ─┘
+                                            Grafana (datasources Mimir + Loki)
+```
+
+- **Grafana is not exposed.** Access: `kubectl port-forward -n monitoring svc/grafana 3000:80`
+  (user `admin`, password from `var.grafana_admin_password`, default `admin`). Publishing it
+  needs TLS for a subdomain, which is unresolved: `main-gateway`'s HTTPS listener has no `hostname`.
+- **Storage is S3 via EKS Pod Identity** (one bucket + IAM role per component, no static keys),
+  because there is no EBS CSI driver. Loki/Mimir/Grafana pods use `emptyDir` for local state.
+- **Mimir is a native single-pod Deployment (`-target=all`), not the `mimir-distributed` chart**
+  (that chart deploys 10+ pods and doesn't fit). Its S3 config needs
+  `native_aws_auth_enabled: true`, otherwise Pod Identity credentials aren't picked up.
+  Loki uses the `grafana/loki` chart in `SingleBinary` mode.
+- **Grafana chart comes from `grafana-community/helm-charts`** — the one in `grafana/helm-charts`
+  is deprecated. Dashboards: drop a JSON file into `infra/k8s/monitoring/dashboards/`; each file
+  becomes a labelled ConfigMap picked up by the sidecar.
+- **Scrape targets:** any `osm-app` pod annotated `prometheus.io/scrape=true` (+ `port`, `path`) —
+  RabbitMQ (`:15692`) is annotated; `fetcher`/`history` have no `/metrics` yet. Redis and Postgres are
+  read by the collector's own receivers (no exporters). Envoy proxy pods in `envoy-gw` are scraped on
+  `:19001/stats/prometheus` — these Envoy details and the `rabbitmq_prometheus` plugin were not
+  verified against a live cluster; confirm after the first deploy.
+- **`templatefile()` pitfalls in `monitoring/*.tftpl`:** write collector env references with a doubled
+  `$` and relabel `$1` as `$$1`; never put a literal interpolation sequence in a *comment* either —
+  `templatefile()` parses it and fails `terraform validate`.
+- The node group is `t3.medium` (was `t3.small`, which ran out of pod slots). Collector resource
+  limits and pod counts are estimates — check `kubectl top pods -A` / `kubectl describe nodes`.
+
 ## Deployment workflow (k8s)
 
 1. Edit `.tf`/`.yml` under `infra/k8s/` (respecting the shard rule above).
@@ -164,7 +199,7 @@ These are hard-won from actually deploying this stack, not theoretical:
 
 ## Conventions
 
-- Terraform comments are in Ukrainian, matching `infra/CLAUDE.md`'s existing convention —
+- Terraform comments are in Ukrainian, matching the existing convention in `infra/` —
   keep doing that in `infra/k8s/*.tf`.
 - Prefer native `kubernetes_*` Terraform resources (Deployment, Service, Secret,
   Namespace) over `kubectl_manifest` + YAML for anything the `kubernetes` provider models
