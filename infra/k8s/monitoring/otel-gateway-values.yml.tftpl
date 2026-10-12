@@ -1,0 +1,128 @@
+# values для open-telemetry/opentelemetry-collector (Deployment x1), рендеряться через templatefile() в otel-collector.tf
+# змінні: mimir_endpoint, postgres_secret
+# призначення: все, що не прив'язане до ноди - стан кластера, redis, postgres, scrape /metrics (envoy, rabbitmq, rust-сервіси)
+#
+# УВАГА до екранування: у templatefile() літерал ${...} треба писати як $${...},
+# а $1 у relabel-регулярках колектора - як $$1 (колектор сам зводить $$ до $)
+mode: deployment
+replicaCount: 1
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+command:
+  name: otelcol-contrib
+
+# k8s_cluster receiver + RBAC (pods/nodes/deployments: get/list/watch), потрібний і для k8s_sd у prometheus receiver
+presets:
+  clusterMetrics:
+    enabled: true
+
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
+
+# credentials Postgres - копія секрету в ns monitoring (секрети між namespace не діляться)
+extraEnvs:
+  - name: POSTGRES_USER
+    valueFrom:
+      secretKeyRef:
+        name: ${postgres_secret}
+        key: user
+  - name: POSTGRES_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: ${postgres_secret}
+        key: password
+
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    redis:
+      endpoint: redis.osm-app.svc.cluster.local:6379
+      collection_interval: 30s
+    postgresql:
+      endpoint: postgres.osm-app.svc.cluster.local:5432
+      username: $${env:POSTGRES_USER}
+      password: $${env:POSTGRES_PASSWORD}
+      databases: [history]
+      collection_interval: 30s
+      tls:
+        insecure: true
+    prometheus:
+      config:
+        scrape_configs:
+          # будь-який под в osm-app з анотацією prometheus.io/scrape=true:
+          # rabbitmq (:15692), а на етапі 2 - fetcher/history (/metrics)
+          - job_name: osm-app-pods
+            scrape_interval: 30s
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names: [osm-app]
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                action: keep
+                regex: "true"
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                action: replace
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $$1:$$2
+                target_label: __address__
+              - source_labels: [__meta_kubernetes_pod_label_app]
+                target_label: app
+              - source_labels: [__meta_kubernetes_pod_name]
+                target_label: pod
+          # Envoy-проксі Gateway: RPS/латентність/коди відповідей на краю.
+          # ПЕРЕВІРИТИ після деплою на живому кластері: лейбл app.kubernetes.io/name=envoy,
+          # порт 19001 і шлях /stats/prometheus (взято зі знань про Envoy Gateway, не з кластера)
+          - job_name: envoy-gateway-proxy
+            scrape_interval: 30s
+            metrics_path: /stats/prometheus
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names: [envoy-gw]
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                action: keep
+                regex: envoy
+              - source_labels: [__meta_kubernetes_pod_ip]
+                action: replace
+                regex: (.+)
+                replacement: $$1:19001
+                target_label: __address__
+              - source_labels: [__meta_kubernetes_pod_name]
+                target_label: pod
+  exporters:
+    debug: null
+    prometheusremotewrite:
+      endpoint: ${mimir_endpoint}
+      resource_to_telemetry_conversion:
+        enabled: true
+  service:
+    pipelines:
+      traces: null
+      logs: null
+      metrics:
+        # k8s_cluster додає пресет clusterMetrics
+        receivers: [redis, postgresql, prometheus]
+        processors: [memory_limiter, batch]
+        exporters: [prometheusremotewrite]

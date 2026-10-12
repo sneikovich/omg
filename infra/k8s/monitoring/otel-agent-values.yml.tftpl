@@ -1,0 +1,67 @@
+# values для open-telemetry/opentelemetry-collector (DaemonSet), рендеряться через templatefile() в otel-collector.tf
+# змінні: loki_endpoint, mimir_endpoint
+# призначення: логи всіх подів (filelog) + метрики kubelet (CPU/пам'ять/мережа подів) з кожної ноди
+mode: daemonset
+
+# потрібен contrib-образ: стандартний/k8s-образ не містить усіх receivers/processors
+image:
+  repository: otel/opentelemetry-collector-contrib
+command:
+  name: otelcol-contrib
+
+# пресети самі додають receivers (filelog, kubeletstats), processor k8sattributes,
+# монтування /var/log/pods та RBAC (nodes/stats) і підключають їх у пайплайни
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  kubeletMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+
+# дефолтні порти jaeger/zipkin нам не потрібні
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 200Mi
+
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    prometheus: null
+  exporters:
+    debug: null
+    # Loki 3.x приймає OTLP на /otlp; ресурсні атрибути k8s.namespace.name, k8s.pod.name,
+    # k8s.container.name стають лейблами (k8s_namespace_name тощо)
+    otlphttp/loki:
+      endpoint: ${loki_endpoint}
+    prometheusremotewrite:
+      endpoint: ${mimir_endpoint}
+      # ресурсні атрибути (k8s.pod.name, k8s.namespace.name...) -> лейбли метрик
+      resource_to_telemetry_conversion:
+        enabled: true
+  service:
+    pipelines:
+      traces: null
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/loki]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [prometheusremotewrite]

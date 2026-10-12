@@ -1,0 +1,79 @@
+# values для чарта grafana/loki, рендеряться через templatefile() у loki.tf
+# змінні: bucket, region, retention
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  storage:
+    type: s3
+    bucketNames:
+      chunks: ${bucket}
+      ruler: ${bucket}
+      admin: ${bucket}
+    s3:
+      region: ${region}
+      # ключів немає навмисно - креденшіали приходять через EKS Pod Identity (monitoring-storage.tf)
+  limits_config:
+    retention_period: ${retention}
+    allow_structured_metadata: true
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  # лише OTLP-ingest від колектора, без метрик самого Loki в Mimir на першому кроці
+  pattern_ingester:
+    enabled: false
+
+serviceAccount:
+  create: true
+  name: loki
+
+singleBinary:
+  replicas: 1
+  # без PVC - в кластері немає aws-ebs-csi-driver; довгі дані лежать у S3,
+  # у emptyDir лише WAL та кеш індексу
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# вимикаємо все, що потрібне лише для scalable/distributed режимів
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+gateway:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+minio:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  serviceMonitor:
+    enabled: false
