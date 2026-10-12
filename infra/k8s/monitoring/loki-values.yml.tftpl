@@ -44,6 +44,14 @@ singleBinary:
   # у emptyDir лише WAL та кеш індексу
   persistence:
     enabled: false
+  # при persistence.enabled=false чарт не монтує /var/loki взагалі, а коренева ФС контейнера read-only -
+  # Loki не мав би куди писати WAL/індекс/compactor; даємо emptyDir вручну
+  extraVolumes:
+    - name: storage
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: storage
+      mountPath: /var/loki
   resources:
     requests:
       cpu: 100m
