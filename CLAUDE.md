@@ -128,8 +128,17 @@ envoy / rabbitmq / redis / postgres / k8s state                                 
 - **`templatefile()` pitfalls in `monitoring/*.tftpl`:** write collector env references with a doubled
   `$` and relabel `$1` as `$$1`; never put a literal interpolation sequence in a *comment* either —
   `templatefile()` parses it and fails `terraform validate`.
-- The node group is `t3.medium` (was `t3.small`, which ran out of pod slots). Collector resource
-  limits and pod counts are estimates — check `kubectl top pods -A` / `kubectl describe nodes`.
+- The node group is `t3.medium` (was `t3.small`, which ran out of pod slots). Resource limits of the
+  monitoring pods are estimates (Grafana's first guess of 256Mi was `OOMKilled`; now 768Mi). There is
+  **no metrics-server, so `kubectl top` doesn't work** — read memory in Grafana from the kubelet
+  metrics (`k8s_pod_memory_*`), or use `kubectl describe pod` for `lastState: OOMKilled`.
+- **First-apply race: restart Mimir.** Pod Identity is injected by a webhook at pod creation, and on a
+  fresh apply the Mimir pod can be created before the association has propagated. Symptom: the pod stays
+  `0/1`, logs `Unable to successfully connect to configured object storage ... Access Denied`, and the
+  pod has no `eks.amazonaws.com/pod-identity` label. Fix: `kubectl rollout restart deployment/mimir -n monitoring`.
+- **DNS after destroy/apply:** the Envoy NLB gets a new hostname each time, and external-dns can log
+  `All records are already up to date` while the Cloudflare CNAME still points to the old NLB (Cloudflare
+  error 1016). Delete the `zmeypavel.com` record and its TXT records in Cloudflare *before* a destroy.
 
 ## Deployment workflow (k8s)
 

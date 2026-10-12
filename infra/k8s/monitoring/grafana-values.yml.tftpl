@@ -12,12 +12,14 @@ persistence:
 testFramework:
   enabled: false
 
+# 256Mi не вистачало: Grafana 13 двічі вбивало OOMKilled (exitCode 137) під час перших відкриттів UI.
+# чарт виставляє GOMEMLIMIT пропорційно ліміту, тож він підніметься разом із ним
 resources:
   requests:
     cpu: 50m
-    memory: 128Mi
-  limits:
     memory: 256Mi
+  limits:
+    memory: 768Mi
 
 datasources:
   datasources.yaml:
