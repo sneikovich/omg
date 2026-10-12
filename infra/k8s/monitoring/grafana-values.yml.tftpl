@@ -1,0 +1,46 @@
+# values для чарта grafana-community/grafana, рендеряться через templatefile() у grafana.tf
+# змінні: admin_secret, namespace, mimir_url, loki_url
+admin:
+  existingSecret: ${admin_secret}
+  userKey: admin-user
+  passwordKey: admin-password
+
+# дашборди та датасорси - як код; без PVC (немає aws-ebs-csi-driver), тож і стан Grafana не персистентний
+persistence:
+  enabled: false
+
+testFramework:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        type: prometheus
+        uid: mimir
+        access: proxy
+        url: ${mimir_url}
+        isDefault: true
+        jsonData:
+          httpMethod: POST
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: ${loki_url}
+
+# sidecar підхоплює ConfigMap-и з міткою grafana_dashboard=1 із цього ж namespace
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    searchNamespace: ${namespace}
