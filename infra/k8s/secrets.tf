@@ -29,3 +29,34 @@ resource "kubernetes_secret_v1" "rabbitmq" {
 
   type = "Opaque"
 }
+
+# пароль адміна Grafana чарт читає через admin.existingSecret, а не з values (щоб не світити в plan-виводі)
+resource "kubernetes_secret_v1" "grafana_admin" {
+  metadata {
+    name      = "grafana-admin"
+    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+  }
+
+  data = {
+    admin-user     = "admin"
+    admin-password = var.grafana_admin_password
+  }
+
+  type = "Opaque"
+}
+
+# otel-gateway збирає метрики Postgres, а секрети між namespace не діляться - тримаємо копію
+# в monitoring. Значення ті самі, що в kubernetes_secret_v1.postgres, тож "дрейфу" немає
+resource "kubernetes_secret_v1" "postgres_monitoring" {
+  metadata {
+    name      = "postgres-credentials"
+    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+  }
+
+  data = {
+    user     = kubernetes_secret_v1.postgres.data["user"]
+    password = kubernetes_secret_v1.postgres.data["password"]
+  }
+
+  type = "Opaque"
+}

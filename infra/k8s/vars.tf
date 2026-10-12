@@ -49,3 +49,24 @@ variable "rabbitmq_password" {
   sensitive = true
   default   = "app"
 }
+
+# Grafana не публікується назовні (лише kubectl port-forward), тож дефолт як у postgres/rabbitmq;
+# перед будь-яким публічним доступом - змінити через terraform.tfvars
+variable "grafana_admin_password" {
+  type      = string
+  sensitive = true
+  default   = "admin"
+}
+
+# скільки тримати метрики (Mimir) та логи (Loki); формат Go-duration (h), бо так вимагають обидва
+variable "monitoring_retention" {
+  type    = string
+  default = "168h"
+}
+
+# страховка на рівні S3: об'єкти старші за N днів видаляє lifecycle, навіть якщо compactor Loki/Mimir
+# не відпрацював ретенцію; має бути більшим за monitoring_retention
+variable "monitoring_s3_expiration_days" {
+  type    = number
+  default = 14
+}

@@ -21,3 +21,10 @@ resource "kubernetes_namespace_v1" "osm_app" {
     name = "osm-app"
   }
 }
+
+# loki, mimir, grafana та otel-collector живуть окремо від osm-app
+resource "kubernetes_namespace_v1" "monitoring" {
+  metadata {
+    name = "monitoring"
+  }
+}
