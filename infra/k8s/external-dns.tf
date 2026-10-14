@@ -29,9 +29,7 @@ resource "helm_release" "external_dns" {
     { name = "domainFilters[0]", value = var.domain_name },
     { name = "serviceAccount.name", value = "external-dns" },
     { name = "serviceAccount.create", value = "true" },
-    # нова версія чарта вимагає policy явно (values.schema.json); upsert-only -
-    # власний дефолт external-dns, ніколи не видаляє записи, яких сам не створював
-    { name = "policy", value = "upsert-only" },
+    { name = "policy", value = "sync" },
     # у цьому чарті немає структурованого cloudflare.proxied - лише extraArgs,
     # що рендериться в CLI-флаг --cloudflare-proxied/--no-cloudflare-proxied.
     # без нього чарт ставить proxied=false - запис веде напряму на IP NLB,
